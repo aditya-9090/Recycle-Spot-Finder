@@ -1,101 +1,134 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import Link from "next/link";
+import './globals.css';
+
+async function fetchLocations() {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations`, {
+      cache: 'no-store', // Ensure the data is not cached
+    });
+    const locations = await res.json();
+    console.log('Fetched locations:', locations); // Log fetched data
+    return locations;
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    return [];
+  }
+}
+
+export default function HomePage() {
+  const [driverCoords, setDriverCoords] = useState({ lat: null, lng: null });
+  const [locations, setLocations] = useState([]); // State to store fetched locations
+  const defaultIconUrl = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png"; // Default icon URL
+
+  useEffect(() => {
+    const map = L.map("map").setView([22.2587, 71.1924], 7); // Coordinates for Gujarat, India
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    // Function to add a marker to the map with custom icon
+    const addMarker = (coords, popupMessage, iconUrl) => {
+      L.marker([coords.lat, coords.lng], {
+        icon: L.icon({
+          iconUrl: iconUrl,
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+          shadowSize: [41, 41],
+          shadowAnchor: [12, 41],
+        }),
+      })
+        .addTo(map)
+        .bindPopup(popupMessage)
+        .openPopup();
+
+      map.setView([coords.lat, coords.lng], 13);
+    };
+
+    // Function to get user's current location
+    const findMyLocation = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setDriverCoords({ lat: latitude, lng: longitude });
+            addMarker(
+              { lat: latitude, lng: longitude },
+              "Your Current Location",
+              defaultIconUrl // Default icon URL for user's location
+            );
+          },
+          (error) => {
+            alert(`Error fetching location: ${error.message}`);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by your browser.");
+      }
+    };
+
+    // Function for Find Spot button (add markers for all locations)
+    const findSpot = async () => {
+      const fetchedLocations = await fetchLocations();
+      setLocations(fetchedLocations);
+      fetchedLocations.forEach(location => {
+        const { name, wasteType, availability, location: loc } = location;
+        const coords = { lat: loc.coordinates[1], lng: loc.coordinates[0] };
+        const popupMessage = `<strong>${name}</strong><br>Waste Type: ${wasteType}<br>Availability: ${availability}`;
+        addMarker(
+          coords,
+          popupMessage,
+          defaultIconUrl // Default blue icon URL for other markers
+        );
+      });
+    };
+
+    document.getElementById('findMyLocation').addEventListener('click', findMyLocation);
+    document.getElementById('findSpot').addEventListener('click', findSpot);
+
+    return () => {
+      map.remove();
+    };
+  }, []);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="w-full container mx-auto py-8 px-4 bg-gray-50 min-h-screen">
+      <h1 className="text-5xl font-extrabold mb-6 text-center text-blue-800">
+        Welcome to Recycle Spot Finder
+      </h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      <div id="map" className="w-full h-[500px] rounded-lg shadow-md mb-6"></div>
+
+      <div className="flex justify-center gap-4">
+        <button
+          id="findMyLocation"
+          className="px-8 py-4 bg-green-600 text-white rounded-lg shadow-xl hover:bg-green-700 transform transition duration-200 ease-in-out hover:scale-105"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          Find My Location
+        </button>
+
+        <button
+          id="findSpot"
+          className="px-8 py-4 bg-blue-600 text-white rounded-lg shadow-xl hover:bg-blue-700 transform transition duration-200 ease-in-out hover:scale-105"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          Find Spot
+        </button>
+      </div>
+
+      <div className="absolute bottom-4 right-8">
+        <Link href="/admin">
+          <button className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-xl hover:bg-red-700 transform transition duration-200 ease-in-out hover:scale-105">
+            Admin Panel
+          </button>
+        </Link>
+      </div>
+    </main>
   );
 }
