@@ -78,7 +78,7 @@ export async function GET(req, { params }) {
         return NextResponse.json({ message: 'Location not found' }, { status: 404 });
       }
   
-      return NextResponse.json(location, { status: 200 });  // Return the found location
+      return NextResponse.json(location, { status: 200 });  
     } catch (error) {
       console.error('Error finding location:', error);
       return NextResponse.json({ message: 'Error finding location', error: error.message }, { status: 500 });
